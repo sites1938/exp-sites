@@ -7,6 +7,12 @@
     <meta name="description" content="Estúdio de design digital especializado em sites de alta performance, landing pages e interfaces premium que convertem.">
     <link rel="icon" href="ChatGPT Image 17 de jul. de 2026, 14_30_20.png" type="image/png">
     
+    <!-- Open Graph / Preview de Links (WhatsApp, etc) -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="EXP Design | Estúdio de Design Digital">
+    <meta property="og:description" content="Design de alta performance para negócios visionários. Elevamos o nível da sua marca com sites premium focados em estética impecável e conversão máxima.">
+    <meta property="og:image" content="ChatGPT%20Image%2017%20de%20jul.%20de%202026,%2014_30_20.png">
+    
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -127,34 +133,27 @@
         .reveal.delay-3 { transition-delay: 300ms; }
         .reveal.delay-4 { transition-delay: 400ms; }
 
-        /* === PORTFOLIO CAROUSEL === */
+        /* === PORTFOLIO CAROUSEL (Horizontal Scroll) === */
         .carousel-container {
-            position: relative;
+            display: flex;
             width: 100%;
             border-radius: 1.5rem;
-            overflow: hidden;
+            overflow-x: auto;
+            scroll-snap-type: x mandatory;
+            scroll-behavior: smooth;
             background: #fff;
             box-shadow: 0 20px 60px -12px rgba(0,0,0,0.1);
             border: 1px solid rgba(0,0,0,0.06);
+            -ms-overflow-style: none; /* IE/Edge */
+            scrollbar-width: none; /* Firefox */
         }
-
+        .carousel-container::-webkit-scrollbar {
+            display: none; /* Chrome/Safari */
+        }
         .carousel-slide {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            opacity: 0;
-            transform: translateY(20px);
-            transition: opacity 0.6s ease, transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
-            pointer-events: none;
-            z-index: 1;
-        }
-        .carousel-slide.active-slide {
+            flex: 0 0 100%;
+            scroll-snap-align: center;
             position: relative;
-            opacity: 1;
-            transform: translateY(0);
-            pointer-events: auto;
-            z-index: 2;
         }
         .carousel-slide img {
             width: 100%;
@@ -498,19 +497,9 @@
                 </div>
 
                 <!-- Carousel Controls -->
-                <div class="flex items-center justify-between mt-8">
+                <div class="flex items-center justify-center mt-8">
                     <!-- Dots -->
                     <div class="flex items-center gap-2" id="carousel-dots"></div>
-
-                    <!-- Arrows -->
-                    <div class="flex items-center gap-3">
-                        <button id="carousel-prev" class="w-12 h-12 rounded-full border border-black/10 bg-white flex items-center justify-center hover:bg-brand-black hover:text-white hover:border-brand-black transition-all duration-300 shadow-sm">
-                            <i data-lucide="arrow-up" class="w-5 h-5"></i>
-                        </button>
-                        <button id="carousel-next" class="w-12 h-12 rounded-full border border-black/10 bg-white flex items-center justify-center hover:bg-brand-black hover:text-white hover:border-brand-black transition-all duration-300 shadow-sm">
-                            <i data-lucide="arrow-down" class="w-5 h-5"></i>
-                        </button>
-                    </div>
                 </div>
             </div>
         </div>
@@ -782,7 +771,7 @@
             }, { threshold: 0.1, rootMargin: '0px 0px -60px 0px' });
             reveals.forEach(el => revealObserver.observe(el));
 
-            // === PORTFOLIO CAROUSEL (Fade System) ===
+            // === PORTFOLIO CAROUSEL (Horizontal Scroll Snap) ===
             const container = document.getElementById('carousel-container');
             const slides = container.querySelectorAll('.carousel-slide');
             const totalSlides = slides.length;
@@ -794,46 +783,55 @@
             for (let i = 0; i < totalSlides; i++) {
                 const dot = document.createElement('button');
                 dot.className = 'carousel-dot' + (i === 0 ? ' active' : '');
-                dot.addEventListener('click', () => { currentSlide = i; updateCarousel(); });
+                dot.addEventListener('click', () => { 
+                    currentSlide = i; 
+                    scrollToSlide(i);
+                });
                 dotsContainer.appendChild(dot);
             }
 
-            function updateCarousel() {
-                slides.forEach((s, i) => {
-                    s.classList.toggle('active-slide', i === currentSlide);
-                });
+            function updateDots(index) {
                 dotsContainer.querySelectorAll('.carousel-dot').forEach((d, i) => {
-                    d.classList.toggle('active', i === currentSlide);
+                    d.classList.toggle('active', i === index);
                 });
+                currentSlide = index;
+            }
+
+            function scrollToSlide(index) {
+                if (index < 0) index = totalSlides - 1;
+                if (index >= totalSlides) index = 0;
+                
+                const slideWidth = container.clientWidth;
+                container.scrollTo({ left: slideWidth * index, behavior: 'smooth' });
             }
 
             function nextSlide() {
-                currentSlide = (currentSlide + 1) % totalSlides;
-                updateCarousel();
+                scrollToSlide(currentSlide + 1);
             }
             function prevSlide() {
-                currentSlide = (currentSlide - 1 + totalSlides) % totalSlides;
-                updateCarousel();
+                scrollToSlide(currentSlide - 1);
             }
+
+            // Intersection Observer to detect scroll and update dots organically
+            const carouselObserver = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const index = parseInt(entry.target.getAttribute('data-index'));
+                        updateDots(index);
+                    }
+                });
+            }, {
+                root: container,
+                threshold: 0.6 // triggers when 60% of the slide is visible
+            });
+            slides.forEach(slide => carouselObserver.observe(slide));
 
             // Autoplay
             setInterval(() => { if (!isPaused) nextSlide(); }, 5000);
-
-            container.addEventListener('mouseenter', () => { isPaused = true; });
-            container.addEventListener('mouseleave', () => { isPaused = false; });
-
-            document.getElementById('carousel-prev').addEventListener('click', prevSlide);
-            document.getElementById('carousel-next').addEventListener('click', nextSlide);
-
-            // Touch swipe
-            let touchStartY = 0;
-            container.addEventListener('touchstart', (e) => { touchStartY = e.touches[0].clientY; }, { passive: true });
-            container.addEventListener('touchend', (e) => {
-                const diff = touchStartY - e.changedTouches[0].clientY;
-                if (Math.abs(diff) > 50) {
-                    if (diff > 0) nextSlide(); else prevSlide();
-                }
-            }, { passive: true });
+            
+            // For mobile, pause when touching so it doesn't slide while user is swiping
+            container.addEventListener('touchstart', () => { isPaused = true; }, { passive: true });
+            container.addEventListener('touchend', () => { isPaused = false; }, { passive: true });
 
             // === COUNTER ANIMATION ===
             const counters = document.querySelectorAll('[data-target]');
