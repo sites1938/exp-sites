@@ -146,6 +146,14 @@
             border: 1px solid rgba(0,0,0,0.06);
             -ms-overflow-style: none; /* IE/Edge */
             scrollbar-width: none; /* Firefox */
+            cursor: grab;
+        }
+        .carousel-container:active {
+            cursor: grabbing;
+        }
+        .carousel-container.dragging {
+            scroll-snap-type: none;
+            scroll-behavior: auto;
         }
         .carousel-container::-webkit-scrollbar {
             display: none; /* Chrome/Safari */
@@ -159,6 +167,9 @@
             width: 100%;
             height: auto;
             display: block;
+            pointer-events: none;
+            user-select: none;
+            -webkit-user-drag: none;
         }
         .carousel-slide-info {
             padding: 1.25rem 1.75rem;
@@ -827,11 +838,54 @@
             slides.forEach(slide => carouselObserver.observe(slide));
 
             // Autoplay
-            setInterval(() => { if (!isPaused) nextSlide(); }, 5000);
+            setInterval(() => { if (!isPaused && !isDragging) nextSlide(); }, 5000);
             
             // For mobile, pause when touching so it doesn't slide while user is swiping
             container.addEventListener('touchstart', () => { isPaused = true; }, { passive: true });
             container.addEventListener('touchend', () => { isPaused = false; }, { passive: true });
+
+            // Desktop Drag to Scroll
+            let isDragging = false;
+            let startX;
+            let startScrollLeft;
+            let dragStartIndex;
+
+            container.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                isPaused = true;
+                container.classList.add('dragging');
+                startX = e.pageX;
+                startScrollLeft = container.scrollLeft;
+                dragStartIndex = currentSlide;
+            });
+
+            const handleDragEnd = (e) => {
+                if (!isDragging) return;
+                isDragging = false;
+                isPaused = false;
+                container.classList.remove('dragging');
+                
+                const diff = startX - e.pageX;
+                
+                // Se o usuário arrastou mais de 75px, troca de slide. Se não, volta pro mesmo.
+                if (Math.abs(diff) > 75) {
+                    if (diff > 0) nextSlide();
+                    else prevSlide();
+                } else {
+                    scrollToSlide(dragStartIndex);
+                }
+            };
+
+            container.addEventListener('mouseleave', handleDragEnd);
+            container.addEventListener('mouseup', handleDragEnd);
+
+            container.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+                e.preventDefault(); // Prevent text selection
+                const x = e.pageX;
+                const walk = (startX - x); 
+                container.scrollLeft = startScrollLeft + walk;
+            });
 
             // === COUNTER ANIMATION ===
             const counters = document.querySelectorAll('[data-target]');
